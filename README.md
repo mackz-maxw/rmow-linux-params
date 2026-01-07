@@ -10,19 +10,19 @@ Linux 系统参数自适应优化的最小可行实现（Rust）。包含：
 
 ## 数学概述
 - 黑盒目标函数 $f(x)$（如 QPS/延迟/CPU 的综合指标）通过高斯过程回归（GP）建模：
-  $$
+  $
   f(\cdot) \sim \mathcal{GP}\left(0, k(\cdot, \cdot)\right),\quad
   k(x, x') = \sigma_f^2 \exp\left(-\frac{1}{2}\sum_i \frac{(x_i - x'_i)^2}{\ell^2}\right)
-  $$
+  $
 - 后验预测（给定观测 $(X, y)$）：
-  $$
+  $
   \mu(x_*) = k_*^\top K^{-1} y,\quad
   \sigma^2(x_*) = k(x_*, x_*) - k_*^\top K^{-1} k_*
-  $$
+  $
 - 采集函数（最小实现使用 UCB）：
-  $$
+  $
   a_{\mathrm{UCB}}(x) = \mu(x) + \kappa \cdot \sigma(x)
-  $$
+  $
   其中 $\kappa$ 控制探索-利用的权衡。
 
 核心实现见 [`optimizer::GaussianProcess`](src/optimizer.rs) 与 [`optimizer::BayesOptimizer`](src/optimizer.rs)。
@@ -39,9 +39,6 @@ Linux 系统参数自适应优化的最小可行实现（Rust）。包含：
 - [src/optimizer.rs](src/optimizer.rs)：高斯过程 + UCB 采集函数
 - [src/params.rs](src/params.rs)：参数空间定义与归一化映射
 - [Cargo.toml](Cargo.toml)：依赖与构建配置
-
-## 与热门开源调参项目的关系
-本项目思想与业界常见黑盒优化工具（如 SMBO/SMAC、Bayesian Optimization、Optuna、OpenTuner 等）一致，但实现精简，专注于 Linux 系统参数自适应优化的落地路径。后续可兼容外部采样器/采集函数以提升效果。
 
 ## 开发计划（里程碑）
 - M0 最小可行（当前）
