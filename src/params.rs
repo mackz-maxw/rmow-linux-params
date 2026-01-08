@@ -33,7 +33,7 @@ impl ParameterSpace {
 
     pub fn sample_random<R: Rng>(&self, rng: &mut R) -> Vec<f64> {
         (0..self.params.len())
-            .map(|_| rng.gen::<f64>())
+            .map(|_| rng.r#gen::<f64>())
             .collect()
     }
 

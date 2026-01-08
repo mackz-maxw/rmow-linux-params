@@ -1,4 +1,4 @@
-use nalgebra::{DMatrix, DVector, Cholesky};
+use nalgebra::{DMatrix, DVector, Cholesky, Dyn};
 use rand::Rng;
 
 use crate::params::ParameterSpace;
@@ -9,7 +9,7 @@ pub struct GaussianProcess {
     noise: f64,
     x: Vec<Vec<f64>>, // 归一化输入
     y: Vec<f64>,      // 观测目标
-    chol: Option<Cholesky<f64, DMatrix<f64>>>,
+    chol: Option<Cholesky<f64, Dyn>>,
     y_vec: Option<DVector<f64>>,
 }
 
@@ -26,7 +26,7 @@ impl GaussianProcess {
         }
     }
 
-    fn kernel(&self, a: &[f64], b: &[f64]) -> f64 {
+    pub fn kernel(&self, a: &[f64], b: &[f64]) -> f64 {
         let mut sq = 0.0;
         for i in 0..a.len() {
             let d = (a[i] - b[i]) / self.length_scale;
@@ -41,6 +41,7 @@ impl GaussianProcess {
         self.fit();
     }
 
+    // 构建核矩阵k并进行Cholesky分解
     fn fit(&mut self) {
         let n = self.x.len();
         if n == 0 {
@@ -59,6 +60,7 @@ impl GaussianProcess {
         for i in 0..n {
             k[(i, i)] += self.noise;
         }
+        // Chlolesky分解求矩阵的逆
         let chol = Cholesky::new(k);
         self.chol = chol;
         self.y_vec = Some(DVector::from_vec(self.y.clone()));
@@ -79,9 +81,11 @@ impl GaussianProcess {
         for i in 0..n {
             k_star[i] = self.kernel(&self.x[i], x_star);
         }
-        let k_ss = self.kernel(x_star, x_star) + self.noise;
+        // 预测的是潜在函数 f 的方差，故不包含观测噪声
+        let k_ss = self.kernel(x_star, x_star);
 
         // mu = k*^T * K^{-1} * y  => w = chol.solve(k*), mu = w^T y
+        // w等价于K^{-1} * k*
         let w = chol.solve(&k_star);
         let mu = w.dot(y);
 
@@ -101,7 +105,7 @@ pub struct BayesOptimizer {
 impl BayesOptimizer {
     pub fn new(space: ParameterSpace, kappa: f64) -> Self {
         Self {
-            gp: GaussianProcess::new(length_scale: 0.2, sigma_f: 1.0, noise: 1e-6),
+            gp: GaussianProcess::new(0.2, 1.0, 1e-6),
             kappa,
             space,
         }
@@ -111,7 +115,7 @@ impl BayesOptimizer {
         self.gp.add_observation(x_norm, y);
     }
 
-    // UCB: a(x) = mu(x) + kappa * sigma(x)
+    // UCB置信上界: a(x) = mu(x) + kappa * sigma(x)
     pub fn suggest<R: Rng>(&self, rng: &mut R, candidates: usize) -> Vec<f64> {
         let mut best_x = self.space.sample_random(rng);
         let mut best_a = f64::NEG_INFINITY;
